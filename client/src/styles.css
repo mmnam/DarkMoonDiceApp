@@ -95,6 +95,28 @@ h3 {
   letter-spacing: 0.08em;
 }
 
+.language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.language-toggle span {
+  opacity: 0.5;
+}
+
+.language-toggle .active {
+  opacity: 1;
+  font-weight: 700;
+}
+
+.language-toggle .separator {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
 .main {
   display: flex;
   flex-direction: column;
