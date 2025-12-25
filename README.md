@@ -42,6 +42,7 @@ Yellow (Corporation) dice: 0, -1, -1, -2, -2, -3
 All dice outcomes are generated server-side.
 
 🧩 App sections
+
 1️⃣ Action Rolls
 
 For:
