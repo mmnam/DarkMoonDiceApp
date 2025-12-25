@@ -11,10 +11,18 @@ export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(defaultLanguage);
 
   const t = useCallback(
-    (key) => {
+    (key, params = {}) => {
       const dictionary = translations[language] || translations[defaultLanguage];
       const fallback = translations[defaultLanguage] || {};
-      return dictionary?.[key] ?? fallback?.[key] ?? key;
+      const template = dictionary?.[key] ?? fallback?.[key] ?? key;
+      if (!params || typeof template !== 'string') {
+        return template;
+      }
+      return Object.entries(params).reduce(
+        (result, [paramKey, paramValue]) =>
+          result.split(`{${paramKey}}`).join(String(paramValue)),
+        template
+      );
     },
     [language]
   );

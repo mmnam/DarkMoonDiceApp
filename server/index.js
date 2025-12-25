@@ -28,10 +28,10 @@ const DICE_FACES = {
 };
 
 const ACTIONS = [
-  'Repair Shields',
-  'Repair Outpost',
-  'Repair Life Support',
-  'Lone Wolf',
+  'actions.repairShields',
+  'actions.repairOutpost',
+  'actions.repairLifeSupport',
+  'actions.loneWolf',
 ];
 
 const rooms = new Map();
@@ -74,23 +74,6 @@ function readDieCounts(diceCounts) {
   return counts;
 }
 
-function buildLockedMessage({ playerName, section, actionType, diceCount }) {
-  if (section === 'action') {
-    return `${playerName} rolled for ${actionType} (locked)`;
-  }
-  if (section === 'corp') {
-    return `${playerName} rolled ${diceCount} yellow corp dice (locked)`;
-  }
-  return `${playerName} rolled for Task (locked)`;
-}
-
-function buildRevealMessage(playerName, revealedDice) {
-  const detail = revealedDice
-    .map((die) => `${die.color} ${die.value > 0 ? `+${die.value}` : die.value}`)
-    .join(', ');
-  return `${playerName} revealed: ${detail}`;
-}
-
 io.on('connection', (socket) => {
   socket.on('join_room', (payload) => {
     const roomCode = String(payload.roomCode || '').trim().toUpperCase();
@@ -118,8 +101,8 @@ io.on('connection', (socket) => {
 
     const entry = {
       id: randomUUID(),
-      type: 'JOIN',
-      message: `${playerName} joined the room`,
+      type: 'JOINED',
+      playerName,
       ts: Date.now(),
     };
     pushFeed(roomCode, entry);
@@ -245,14 +228,9 @@ io.on('connection', (socket) => {
       id: randomUUID(),
       type: 'ROLL_LOCKED',
       section,
-      actionType,
+      playerName,
+      action: section === 'action' ? actionType : undefined,
       diceCount: section === 'corp' ? diceList.length : undefined,
-      message: buildLockedMessage({
-        playerName,
-        section,
-        actionType,
-        diceCount: diceList.length,
-      }),
       ts: Date.now(),
     };
 
@@ -324,9 +302,11 @@ io.on('connection', (socket) => {
       id: randomUUID(),
       type: 'ROLL_REVEALED',
       section: roll.section,
-      actionType: roll.actionType,
-      revealedDice,
-      message: buildRevealMessage(playerName, revealedDice),
+      playerName,
+      revealed: revealedDice.map((die) => ({
+        color: die.color,
+        value: die.value,
+      })),
       ts: Date.now(),
     };
 
@@ -341,6 +321,30 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('reset_section', (payload) => {
+    const roomCode = socket.data.roomCode;
+    const playerName = socket.data.playerName;
+
+    if (!roomCode || !playerName) {
+      return;
+    }
+
+    const section = payload?.section;
+    if (!['action', 'corp', 'task'].includes(section)) {
+      return;
+    }
+
+    const entry = {
+      id: randomUUID(),
+      type: 'RESET',
+      playerName,
+      section,
+      ts: Date.now(),
+    };
+
+    pushFeed(roomCode, entry);
+  });
+
   socket.on('disconnect', () => {
     const roomCode = socket.data.roomCode;
     const playerName = socket.data.playerName;
@@ -353,8 +357,8 @@ io.on('connection', (socket) => {
 
     const entry = {
       id: randomUUID(),
-      type: 'LEAVE',
-      message: `${playerName} left the room`,
+      type: 'LEFT',
+      playerName,
       ts: Date.now(),
     };
     pushFeed(roomCode, entry);
