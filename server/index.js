@@ -302,6 +302,14 @@ io.on('connection', (socket) => {
       return;
     }
 
+    if ((roll.section === 'action' || roll.section === 'corp') && indices.length !== 1) {
+      socket.emit('reveal_error', {
+        message: 'Select exactly one die to reveal.',
+        section: roll.section,
+      });
+      return;
+    }
+
     indices.forEach((idx) => {
       roll.revealedFlags[idx] = true;
     });

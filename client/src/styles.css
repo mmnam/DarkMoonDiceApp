@@ -253,6 +253,7 @@ button:disabled {
   border-radius: 14px;
   color: #fff;
   text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .die.black {
@@ -273,7 +274,23 @@ button:disabled {
 }
 
 .die.selected {
-  outline: 3px solid rgba(255, 255, 255, 0.75);
+  outline: 3px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 2px rgba(12, 16, 25, 0.15), 0 12px 20px rgba(12, 16, 25, 0.2);
+  transform: translateY(-2px);
+}
+
+.die.selected::after {
+  content: 'SELECTED';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1a1a1a;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .die-label {

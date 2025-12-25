@@ -16,6 +16,7 @@ const SECTION_KEYS = {
 };
 
 const DICE_COLORS = ['black', 'red', 'blue', 'yellow'];
+const SINGLE_REVEAL_SECTIONS = new Set(['action', 'corp']);
 
 function clampNumber(value) {
   const next = Number(value);
@@ -176,6 +177,9 @@ export default function App() {
       if (existing.includes(idx)) {
         return { ...prev, [section]: existing.filter((item) => item !== idx) };
       }
+      if (SINGLE_REVEAL_SECTIONS.has(section)) {
+        return { ...prev, [section]: [idx] };
+      }
       return { ...prev, [section]: [...existing, idx] };
     });
   };
@@ -252,6 +256,13 @@ export default function App() {
       }));
       return;
     }
+    if (SINGLE_REVEAL_SECTIONS.has(section) && selected.length !== 1) {
+      setSectionErrors((prev) => ({
+        ...prev,
+        [section]: t('errors.revealSingle'),
+      }));
+      return;
+    }
     socket.emit('reveal_request', {
       rollId: roll.rollId,
       indices: selected,
@@ -277,6 +288,7 @@ export default function App() {
               className={`die ${color} ${selected ? 'selected' : ''}`}
               onClick={() => isInteractive && toggleSelection(section, idx)}
               disabled={!isInteractive}
+              aria-pressed={selected}
             >
               <span className="die-label">{colorLabel}</span>
               <span className="die-value">{formatValue(value)}</span>
