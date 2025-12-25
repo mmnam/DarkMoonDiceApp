@@ -15,13 +15,9 @@ const SECTION_KEYS = {
   task: 'sections.task',
 };
 
-const DICE_COLORS = ['black', 'red', 'blue', 'yellow'];
+const COUNT_COLORS = ['black', 'red', 'blue'];
 const SINGLE_REVEAL_SECTIONS = new Set(['action', 'corp']);
-
-function clampNumber(value) {
-  const next = Number(value);
-  return Number.isNaN(next) ? 0 : Math.max(0, next);
-}
+const MAX_TOTALS = { action: 3, task: 6 };
 
 function totalCounts(counts) {
   return Object.values(counts).reduce((sum, val) => sum + Number(val || 0), 0);
@@ -168,6 +164,38 @@ export default function App() {
     }
     if (section === 'task') {
       setTaskCounts({ black: 0, red: 0, blue: 0 });
+    }
+  };
+
+  const resetCounts = (section) => {
+    if (section === 'action') {
+      setActionCounts({ black: 0, red: 0, blue: 0 });
+    }
+    if (section === 'task') {
+      setTaskCounts({ black: 0, red: 0, blue: 0 });
+    }
+  };
+
+  const adjustCount = (section, color, delta) => {
+    if (section === 'action') {
+      setActionCounts((prev) => {
+        const total = totalCounts(prev);
+        if (delta > 0 && total >= MAX_TOTALS.action) {
+          return prev;
+        }
+        const nextValue = Math.max(0, Number(prev[color] || 0) + delta);
+        return { ...prev, [color]: nextValue };
+      });
+    }
+    if (section === 'task') {
+      setTaskCounts((prev) => {
+        const total = totalCounts(prev);
+        if (delta > 0 && total >= MAX_TOTALS.task) {
+          return prev;
+        }
+        const nextValue = Math.max(0, Number(prev[color] || 0) + delta);
+        return { ...prev, [color]: nextValue };
+      });
     }
   };
 
@@ -386,55 +414,46 @@ export default function App() {
                         ))}
                       </select>
                     </label>
-                    <label>
-                      {t('inputs.blackDice')}
-                      <input
-                        type="number"
-                        min="0"
-                        max="3"
-                        value={actionCounts.black}
-                        onChange={(e) =>
-                          setActionCounts((prev) => ({
-                            ...prev,
-                            black: clampNumber(e.target.value),
-                          }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      {t('inputs.redDice')}
-                      <input
-                        type="number"
-                        min="0"
-                        max="3"
-                        value={actionCounts.red}
-                        onChange={(e) =>
-                          setActionCounts((prev) => ({
-                            ...prev,
-                            red: clampNumber(e.target.value),
-                          }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      {t('inputs.blueDice')}
-                      <input
-                        type="number"
-                        min="0"
-                        max="3"
-                        value={actionCounts.blue}
-                        onChange={(e) =>
-                          setActionCounts((prev) => ({
-                            ...prev,
-                            blue: clampNumber(e.target.value),
-                          }))
-                        }
-                      />
-                    </label>
+                    <div className="stepper-grid">
+                      {COUNT_COLORS.map((color) => {
+                        const count = actionCounts[color];
+                        const total = totalCounts(actionCounts);
+                        const isAtMax = total >= MAX_TOTALS.action;
+                        return (
+                          <div key={color} className="stepper">
+                            <span className="stepper-label">{t(`inputs.${color}Dice`)}</span>
+                            <div className="stepper-controls">
+                              <button
+                                type="button"
+                                className="stepper-button"
+                                onClick={() => adjustCount('action', color, -1)}
+                                disabled={count === 0}
+                                aria-label={`${t(`inputs.${color}Dice`)} minus`}
+                              >
+                                -
+                              </button>
+                              <span className="stepper-count">{count}</span>
+                              <button
+                                type="button"
+                                className="stepper-button"
+                                onClick={() => adjustCount('action', color, 1)}
+                                disabled={isAtMax}
+                                aria-label={`${t(`inputs.${color}Dice`)} plus`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="button-row">
                     <button type="button" className="primary" onClick={() => requestRoll('action')}>
                       {t('buttons.roll')}
+                    </button>
+                    <button type="button" onClick={() => resetCounts('action')}>
+                      {t('buttons.resetCounts')}
                     </button>
                     <button type="button" onClick={() => resetSection('action')}>
                       {t('buttons.reset')}
@@ -517,55 +536,46 @@ export default function App() {
                 <div className="section">
                   <h2>{t('sections.task')}</h2>
                   <div className="control-grid">
-                    <label>
-                      {t('inputs.blackDice')}
-                      <input
-                        type="number"
-                        min="0"
-                        max="6"
-                        value={taskCounts.black}
-                        onChange={(e) =>
-                          setTaskCounts((prev) => ({
-                            ...prev,
-                            black: clampNumber(e.target.value),
-                          }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      {t('inputs.redDice')}
-                      <input
-                        type="number"
-                        min="0"
-                        max="6"
-                        value={taskCounts.red}
-                        onChange={(e) =>
-                          setTaskCounts((prev) => ({
-                            ...prev,
-                            red: clampNumber(e.target.value),
-                          }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      {t('inputs.blueDice')}
-                      <input
-                        type="number"
-                        min="0"
-                        max="6"
-                        value={taskCounts.blue}
-                        onChange={(e) =>
-                          setTaskCounts((prev) => ({
-                            ...prev,
-                            blue: clampNumber(e.target.value),
-                          }))
-                        }
-                      />
-                    </label>
+                    <div className="stepper-grid">
+                      {COUNT_COLORS.map((color) => {
+                        const count = taskCounts[color];
+                        const total = totalCounts(taskCounts);
+                        const isAtMax = total >= MAX_TOTALS.task;
+                        return (
+                          <div key={color} className="stepper">
+                            <span className="stepper-label">{t(`inputs.${color}Dice`)}</span>
+                            <div className="stepper-controls">
+                              <button
+                                type="button"
+                                className="stepper-button"
+                                onClick={() => adjustCount('task', color, -1)}
+                                disabled={count === 0}
+                                aria-label={`${t(`inputs.${color}Dice`)} minus`}
+                              >
+                                -
+                              </button>
+                              <span className="stepper-count">{count}</span>
+                              <button
+                                type="button"
+                                className="stepper-button"
+                                onClick={() => adjustCount('task', color, 1)}
+                                disabled={isAtMax}
+                                aria-label={`${t(`inputs.${color}Dice`)} plus`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="button-row">
                     <button type="button" className="primary" onClick={() => requestRoll('task')}>
                       {t('buttons.roll')}
+                    </button>
+                    <button type="button" onClick={() => resetCounts('task')}>
+                      {t('buttons.resetCounts')}
                     </button>
                     <button type="button" onClick={() => resetSection('task')}>
                       {t('buttons.reset')}
