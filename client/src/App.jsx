@@ -3,10 +3,10 @@ import { socket } from './lib/socket.js';
 import { useLanguage } from './i18n/LanguageContext.jsx';
 
 const ACTIONS = [
-  { key: 'actions.repairShields', value: 'Repair Shields' },
-  { key: 'actions.repairOutpost', value: 'Repair Outpost' },
-  { key: 'actions.repairLifeSupport', value: 'Repair Life Support' },
-  { key: 'actions.loneWolf', value: 'Lone Wolf' },
+  { key: 'actions.repairShields' },
+  { key: 'actions.repairOutpost' },
+  { key: 'actions.repairLifeSupport' },
+  { key: 'actions.loneWolf' },
 ];
 
 const SECTION_KEYS = {
@@ -36,7 +36,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('action');
   const [joinError, setJoinError] = useState('');
 
-  const [actionType, setActionType] = useState(ACTIONS[0].value);
+  const [actionType, setActionType] = useState(ACTIONS[0].key);
   const [actionCounts, setActionCounts] = useState({ black: 0, red: 0, blue: 0 });
   const [taskCounts, setTaskCounts] = useState({ black: 0, red: 0, blue: 0 });
   const [corpCount, setCorpCount] = useState(2);
@@ -155,9 +155,13 @@ export default function App() {
     setRollStates((prev) => ({ ...prev, [section]: null }));
     setSelectedIndices((prev) => ({ ...prev, [section]: [] }));
 
+    if (joined) {
+      socket.emit('reset_section', { section });
+    }
+
     if (section === 'action') {
       setActionCounts({ black: 0, red: 0, blue: 0 });
-      setActionType(ACTIONS[0].value);
+      setActionType(ACTIONS[0].key);
     }
     if (section === 'corp') {
       setCorpCount(2);
@@ -328,6 +332,46 @@ export default function App() {
     );
   };
 
+  const formatFeedMessage = (entry) => {
+    if (!entry || !entry.type) {
+      return '';
+    }
+
+    if (entry.type === 'JOINED') {
+      return t('feed.joined', { name: entry.playerName });
+    }
+    if (entry.type === 'LEFT') {
+      return t('feed.left', { name: entry.playerName });
+    }
+    if (entry.type === 'RESET') {
+      const sectionLabel = t(`sections.${entry.section}`);
+      return t('feed.reset', { name: entry.playerName, section: sectionLabel });
+    }
+    if (entry.type === 'ROLL_LOCKED') {
+      if (entry.section === 'corp') {
+        return t('feed.rollLocked.corp', {
+          name: entry.playerName,
+          count: entry.diceCount,
+        });
+      }
+      if (entry.section === 'action') {
+        return t('feed.rollLocked.action', {
+          name: entry.playerName,
+          action: t(entry.action),
+        });
+      }
+      return t('feed.rollLocked.task', { name: entry.playerName });
+    }
+    if (entry.type === 'ROLL_REVEALED') {
+      const values = (entry.revealed || [])
+        .map((die) => `${t(`dice.${die.color}`)} ${formatValue(die.value)}`)
+        .join(', ');
+      return t('feed.rollRevealed', { name: entry.playerName, values });
+    }
+
+    return '';
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -408,7 +452,7 @@ export default function App() {
                       {t('actions.label')}
                       <select value={actionType} onChange={(e) => setActionType(e.target.value)}>
                         {ACTIONS.map((action) => (
-                          <option key={action.value} value={action.value}>
+                          <option key={action.key} value={action.key}>
                             {t(action.key)}
                           </option>
                         ))}
@@ -610,7 +654,7 @@ export default function App() {
               {feed.length === 0 && <p className="muted">{t('feed.empty')}</p>}
               {feed.map((entry) => (
                 <div key={entry.id} className={`feed-item ${entry.type}`}>
-                  <div className="feed-message">{entry.message}</div>
+                  <div className="feed-message">{formatFeedMessage(entry)}</div>
                   <div className="feed-time">
                     {new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
