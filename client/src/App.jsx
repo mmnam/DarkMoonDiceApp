@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
 import { socket } from './lib/socket.js';
+import { useLanguage } from './i18n/LanguageContext.jsx';
 
 const ACTIONS = [
-  'Repair Shields',
-  'Repair Outpost',
-  'Repair Life Support',
-  'Lone Wolf',
+  { key: 'actions.repairShields', value: 'Repair Shields' },
+  { key: 'actions.repairOutpost', value: 'Repair Outpost' },
+  { key: 'actions.repairLifeSupport', value: 'Repair Life Support' },
+  { key: 'actions.loneWolf', value: 'Lone Wolf' },
 ];
 
-const SECTION_LABELS = {
-  action: 'Action Rolls',
-  corp: 'Corporation Yellow Dice',
-  task: 'Task Rolls',
+const SECTION_KEYS = {
+  action: 'sections.action',
+  corp: 'sections.corp',
+  task: 'sections.task',
 };
 
 const DICE_COLORS = ['black', 'red', 'blue', 'yellow'];
@@ -30,6 +31,7 @@ function formatValue(value) {
 }
 
 export default function App() {
+  const { language, setLanguage, t } = useLanguage();
   const [roomCode, setRoomCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [joined, setJoined] = useState(false);
@@ -37,7 +39,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('action');
   const [joinError, setJoinError] = useState('');
 
-  const [actionType, setActionType] = useState(ACTIONS[0]);
+  const [actionType, setActionType] = useState(ACTIONS[0].value);
   const [actionCounts, setActionCounts] = useState({ black: 0, red: 0, blue: 0 });
   const [taskCounts, setTaskCounts] = useState({ black: 0, red: 0, blue: 0 });
   const [corpCount, setCorpCount] = useState(2);
@@ -68,7 +70,7 @@ export default function App() {
     });
 
     socket.on('join_error', (payload) => {
-      setJoinError(payload.message || 'Unable to join that room.');
+      setJoinError(payload.message || t('errors.joinFailed'));
     });
 
     socket.on('feed_entry', (entry) => {
@@ -135,13 +137,13 @@ export default function App() {
       socket.off('reveal_error');
       socket.off('roll_revealed_ack');
     };
-  }, [socket, activeSection]);
+  }, [activeSection, t]);
 
   const joinRoom = () => {
     const trimmedCode = roomCode.trim().toUpperCase();
     const trimmedName = playerName.trim();
     if (!trimmedCode || !trimmedName) {
-      setJoinError('Enter a room code and name to join.');
+      setJoinError(t('errors.joinMissing'));
       return;
     }
     setJoinError('');
@@ -158,7 +160,7 @@ export default function App() {
 
     if (section === 'action') {
       setActionCounts({ black: 0, red: 0, blue: 0 });
-      setActionType(ACTIONS[0]);
+      setActionType(ACTIONS[0].value);
     }
     if (section === 'corp') {
       setCorpCount(2);
@@ -183,7 +185,7 @@ export default function App() {
     if (currentRoll && !currentRoll.completed) {
       setSectionErrors((prev) => ({
         ...prev,
-        [section]: 'Finish or reset the current roll before rolling again.',
+        [section]: t('errors.rollInProgress'),
       }));
       return;
     }
@@ -195,7 +197,7 @@ export default function App() {
       if (total < 1 || total > 3) {
         setSectionErrors((prev) => ({
           ...prev,
-          action: 'Action rolls must use 1 to 3 dice total.',
+          action: t('errors.actionDiceRange'),
         }));
         return;
       }
@@ -210,7 +212,7 @@ export default function App() {
       if (![2, 3].includes(corpCount)) {
         setSectionErrors((prev) => ({
           ...prev,
-          corp: 'Corp rolls must be 2 or 3 yellow dice.',
+          corp: t('errors.corpDiceRange'),
         }));
         return;
       }
@@ -225,7 +227,7 @@ export default function App() {
       if (total < 1 || total > 6) {
         setSectionErrors((prev) => ({
           ...prev,
-          task: 'Task rolls must use 1 to 6 dice total.',
+          task: t('errors.taskDiceRange'),
         }));
         return;
       }
@@ -246,7 +248,7 @@ export default function App() {
     if (!selected.length) {
       setSectionErrors((prev) => ({
         ...prev,
-        [section]: 'Select at least one die to reveal.',
+        [section]: t('errors.revealEmpty'),
       }));
       return;
     }
@@ -259,7 +261,7 @@ export default function App() {
   const renderDice = (section) => {
     const roll = rollStates[section];
     if (!roll) {
-      return <p className="muted">No roll yet. Roll dice to see private results.</p>;
+      return <p className="muted">{t('roll.none')}</p>;
     }
     return (
       <div className="dice-grid">
@@ -267,6 +269,7 @@ export default function App() {
           const value = roll.outcomes[idx];
           const selected = selectedIndices[section].includes(idx);
           const isInteractive = !roll.completed;
+          const colorLabel = t(`dice.${color}`);
           return (
             <button
               key={`${color}-${idx}`}
@@ -275,7 +278,7 @@ export default function App() {
               onClick={() => isInteractive && toggleSelection(section, idx)}
               disabled={!isInteractive}
             >
-              <span className="die-label">{color}</span>
+              <span className="die-label">{colorLabel}</span>
               <span className="die-value">{formatValue(value)}</span>
               <span className="die-index">#{idx + 1}</span>
             </button>
@@ -289,37 +292,51 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div>
-          <p className="eyebrow">Dark Moon</p>
-          <h1>Real-time Dice Table</h1>
+          <p className="eyebrow">{t('app.brand')}</p>
+          <h1>{t('app.title')}</h1>
         </div>
         <div className="room-info">
-          <span className="chip">Room: {joined ? roomCode : '---'}</span>
-          <span className="chip">Player: {joined ? playerName : '---'}</span>
+          <span className="chip">
+            {t('room.label')}: {joined ? roomCode : t('common.placeholder')}
+          </span>
+          <span className="chip">
+            {t('player.label')}: {joined ? playerName : t('common.placeholder')}
+          </span>
+          <button
+            type="button"
+            className="chip language-toggle"
+            onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
+            aria-label={t('language.toggleLabel')}
+          >
+            <span className={language === 'en' ? 'active' : ''}>EN</span>
+            <span className="separator">/</span>
+            <span className={language === 'es' ? 'active' : ''}>ES</span>
+          </button>
         </div>
       </header>
 
       {!joined && (
         <section className="card join">
-          <h2>Join a room</h2>
+          <h2>{t('join.title')}</h2>
           <div className="form-grid">
             <label>
-              Room code
+              {t('join.roomCode')}
               <input
                 value={roomCode}
                 onChange={(event) => setRoomCode(event.target.value)}
-                placeholder="E.g. MOON"
+                placeholder={t('join.roomCodePlaceholder')}
               />
             </label>
             <label>
-              Display name
+              {t('join.displayName')}
               <input
                 value={playerName}
                 onChange={(event) => setPlayerName(event.target.value)}
-                placeholder="Your name"
+                placeholder={t('join.displayNamePlaceholder')}
               />
             </label>
             <button type="button" className="primary" onClick={joinRoom}>
-              Join room
+              {t('join.button')}
             </button>
           </div>
           {joinError && <p className="error">{joinError}</p>}
@@ -330,14 +347,14 @@ export default function App() {
         <main className="main">
           <section className="card sections">
             <div className="tabs">
-              {Object.entries(SECTION_LABELS).map(([key, label]) => (
+              {Object.entries(SECTION_KEYS).map(([key, labelKey]) => (
                 <button
                   key={key}
                   type="button"
                   className={`tab ${activeSection === key ? 'active' : ''}`}
                   onClick={() => setActiveSection(key)}
                 >
-                  {label}
+                  {t(labelKey)}
                 </button>
               ))}
             </div>
@@ -345,20 +362,20 @@ export default function App() {
             <div className="panel">
               {activeSection === 'action' && (
                 <div className="section">
-                  <h2>Action Rolls</h2>
+                  <h2>{t('sections.action')}</h2>
                   <div className="control-grid">
                     <label>
-                      Action
+                      {t('actions.label')}
                       <select value={actionType} onChange={(e) => setActionType(e.target.value)}>
                         {ACTIONS.map((action) => (
-                          <option key={action} value={action}>
-                            {action}
+                          <option key={action.value} value={action.value}>
+                            {t(action.key)}
                           </option>
                         ))}
                       </select>
                     </label>
                     <label>
-                      Black dice
+                      {t('inputs.blackDice')}
                       <input
                         type="number"
                         min="0"
@@ -373,7 +390,7 @@ export default function App() {
                       />
                     </label>
                     <label>
-                      Red dice
+                      {t('inputs.redDice')}
                       <input
                         type="number"
                         min="0"
@@ -388,7 +405,7 @@ export default function App() {
                       />
                     </label>
                     <label>
-                      Blue dice
+                      {t('inputs.blueDice')}
                       <input
                         type="number"
                         min="0"
@@ -405,15 +422,15 @@ export default function App() {
                   </div>
                   <div className="button-row">
                     <button type="button" className="primary" onClick={() => requestRoll('action')}>
-                      Roll
+                      {t('buttons.roll')}
                     </button>
                     <button type="button" onClick={() => resetSection('action')}>
-                      Reset
+                      {t('buttons.reset')}
                     </button>
                   </div>
                   {sectionErrors.action && <p className="error">{sectionErrors.action}</p>}
 
-                  <h3>My Results</h3>
+                  <h3>{t('results.title')}</h3>
                   {renderDice('action')}
                   <div className="button-row">
                     <button
@@ -426,7 +443,7 @@ export default function App() {
                         selectedIndices.action.length === 0
                       }
                     >
-                      Reveal selected
+                      {t('buttons.revealSelected')}
                     </button>
                   </div>
                 </div>
@@ -434,7 +451,7 @@ export default function App() {
 
               {activeSection === 'corp' && (
                 <div className="section">
-                  <h2>Corporation Yellow Dice</h2>
+                  <h2>{t('sections.corp')}</h2>
                   <div className="control-grid">
                     <label className="radio">
                       <input
@@ -443,7 +460,7 @@ export default function App() {
                         checked={corpCount === 2}
                         onChange={() => setCorpCount(2)}
                       />
-                      Roll 2 yellow dice
+                      {t('corp.optionTwo')}
                     </label>
                     <label className="radio">
                       <input
@@ -452,20 +469,20 @@ export default function App() {
                         checked={corpCount === 3}
                         onChange={() => setCorpCount(3)}
                       />
-                      Roll 3 yellow dice
+                      {t('corp.optionThree')}
                     </label>
                   </div>
                   <div className="button-row">
                     <button type="button" className="primary" onClick={() => requestRoll('corp')}>
-                      Roll
+                      {t('buttons.roll')}
                     </button>
                     <button type="button" onClick={() => resetSection('corp')}>
-                      Reset
+                      {t('buttons.reset')}
                     </button>
                   </div>
                   {sectionErrors.corp && <p className="error">{sectionErrors.corp}</p>}
 
-                  <h3>My Results</h3>
+                  <h3>{t('results.title')}</h3>
                   {renderDice('corp')}
                   <div className="button-row">
                     <button
@@ -478,7 +495,7 @@ export default function App() {
                         selectedIndices.corp.length === 0
                       }
                     >
-                      Reveal selected
+                      {t('buttons.revealSelected')}
                     </button>
                   </div>
                 </div>
@@ -486,10 +503,10 @@ export default function App() {
 
               {activeSection === 'task' && (
                 <div className="section">
-                  <h2>Task Rolls</h2>
+                  <h2>{t('sections.task')}</h2>
                   <div className="control-grid">
                     <label>
-                      Black dice
+                      {t('inputs.blackDice')}
                       <input
                         type="number"
                         min="0"
@@ -504,7 +521,7 @@ export default function App() {
                       />
                     </label>
                     <label>
-                      Red dice
+                      {t('inputs.redDice')}
                       <input
                         type="number"
                         min="0"
@@ -519,7 +536,7 @@ export default function App() {
                       />
                     </label>
                     <label>
-                      Blue dice
+                      {t('inputs.blueDice')}
                       <input
                         type="number"
                         min="0"
@@ -536,15 +553,15 @@ export default function App() {
                   </div>
                   <div className="button-row">
                     <button type="button" className="primary" onClick={() => requestRoll('task')}>
-                      Roll
+                      {t('buttons.roll')}
                     </button>
                     <button type="button" onClick={() => resetSection('task')}>
-                      Reset
+                      {t('buttons.reset')}
                     </button>
                   </div>
                   {sectionErrors.task && <p className="error">{sectionErrors.task}</p>}
 
-                  <h3>My Results</h3>
+                  <h3>{t('results.title')}</h3>
                   {renderDice('task')}
                   <div className="button-row">
                     <button
@@ -557,7 +574,7 @@ export default function App() {
                         selectedIndices.task.length === 0
                       }
                     >
-                      Reveal selected
+                      {t('buttons.revealSelected')}
                     </button>
                   </div>
                 </div>
@@ -566,9 +583,9 @@ export default function App() {
           </section>
 
           <section className="card feed">
-            <h2>Table Feed</h2>
+            <h2>{t('feed.title')}</h2>
             <div className="feed-list">
-              {feed.length === 0 && <p className="muted">No activity yet.</p>}
+              {feed.length === 0 && <p className="muted">{t('feed.empty')}</p>}
               {feed.map((entry) => (
                 <div key={entry.id} className={`feed-item ${entry.type}`}>
                   <div className="feed-message">{entry.message}</div>
@@ -583,7 +600,7 @@ export default function App() {
       )}
 
       <footer className="footer">
-        <p>Server-authoritative rolls. Reveal only what you select.</p>
+        <p>{t('footer.note')}</p>
       </footer>
     </div>
   );
