@@ -652,14 +652,17 @@ export default function App() {
             <h2>{t('feed.title')}</h2>
             <div className="feed-list">
               {feed.length === 0 && <p className="muted">{t('feed.empty')}</p>}
-              {feed.map((entry) => (
-                <div key={entry.id} className={`feed-item ${entry.type}`}>
-                  <div className="feed-message">{formatFeedMessage(entry)}</div>
-                  <div className="feed-time">
-                    {new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {feed
+                .slice(-7)
+                .reverse()
+                .map((entry) => (
+                  <div key={entry.id} className={`feed-item ${entry.type}`}>
+                    <div className="feed-message">{formatFeedMessage(entry)}</div>
+                    <div className="feed-time">
+                      {new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </section>
         </main>

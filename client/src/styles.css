@@ -355,17 +355,9 @@ button:disabled {
   opacity: 0.8;
 }
 
-.feed {
-  max-height: 360px;
-  overflow: hidden;
-}
-
 .feed-list {
   display: grid;
   gap: 10px;
-  max-height: 300px;
-  overflow-y: auto;
-  padding-right: 6px;
 }
 
 .feed-item {
