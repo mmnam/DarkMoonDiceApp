@@ -52,8 +52,8 @@ function getRoom(roomCode) {
 function pushFeed(roomCode, entry) {
   const room = getRoom(roomCode);
   room.feed.push(entry);
-  if (room.feed.length > 200) {
-    room.feed.shift();
+  if (room.feed.length > 20) {
+    room.feed.splice(0, room.feed.length - 20);
   }
   io.to(roomCode).emit('feed_entry', entry);
 }
